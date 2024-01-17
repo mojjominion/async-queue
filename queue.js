@@ -5,28 +5,56 @@ export class Queue {
     this.$capacity = 10;
   }
 
-  canWrite() {
-    return this.$writeQueue.length < this.$capacity;
+  async waitFor({ predicate, error, noTimeout }) {
+    return new Promise((resolve, reject) => {
+      if (!noTimeout) {
+        setTimeout(() => reject(error ?? "Timeout"), 3 * 1000);
+      }
+
+      setInterval(() => {
+        if (predicate()) {
+          resolve(true);
+        }
+      }, 200);
+    });
   }
 
-  write(msg) {
-    if (this.canWrite()) {
+  async write(msg) {
+    if (
+      await this.waitFor({
+        predicate: () => this.$writeQueue.length < this.$capacity,
+        error: "Write timeout",
+      })
+    ) {
       this.$writeQueue.push(msg);
-      console.warn(msg, `Size:: ${this.$writeQueue.length}`);
-      return;
+      return Promise.resolve();
     }
-    console.warn("Queue is full!!");
+    return new Promise("Queue is full!!")();
   }
 
-  read() {
+  async read() {
+    //
     // pop all elements from writeQueue and push them to readQueue
-    if (this.$writeQueue.length > 0 && this.$readQueue.length === 0) {
-      while (this.$writeQueue.length > 0) {
-        this.$readQueue.push(this.$writeQueue.pop());
+    if (
+      await this.waitFor({
+        predicate: () => this.$writeQueue.length > 0,
+        error: "Read timeout",
+      })
+    ) {
+      if (this.$readQueue.length == 0) {
+        while (this.$writeQueue.length > 0) {
+          this.$readQueue.push(this.$writeQueue.pop());
+        }
       }
     }
+
     // return last element from readQueue if non-empty
-    if (this.$readQueue.length > 0) {
+    if (
+      await this.waitFor({
+        predicate: () => this.$readQueue.length > 0,
+        error: "final reading",
+      })
+    ) {
       return this.$readQueue.pop();
     }
 

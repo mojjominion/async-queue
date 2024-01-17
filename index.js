@@ -1,21 +1,44 @@
 import { Queue } from "./queue.js";
 
-function reader(q) {
-  for (let i = 0; i < 20; i++) {
-    const data = q.read();
-    console.log("data=", data);
+async function reader(q) {
+  while (true) {
+    try {
+      const data = await q.read();
+      console.log(
+        "[Reader] Received ::",
+        data,
+        // q.$readQueue.length,
+        // q.$writeQueue.length,
+      );
+    } catch (error) {
+      console.log("[Reader Error] ::", error);
+    }
   }
 }
 
-function writer(q) {
-  for (let i = 0; i < 20; i++) {
-    q.write(`msg_${i + 1}`);
+async function writer(q) {
+  let i = 0;
+  while (true) {
+    try {
+      const msg = `msg_${i + 1}`;
+      await q.write(msg);
+      i += 1;
+      console.log(
+        "[Writer] ::",
+        msg,
+        // q.$readQueue.length,
+        // q.$writeQueue.length,
+      );
+    } catch (error) {
+      console.log("[Writer Error] ::", error);
+    }
   }
 }
 
 function run() {
   const queue = new Queue();
-  writer(queue);
   reader(queue);
+  writer(queue);
 }
+
 run();
