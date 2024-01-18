@@ -1,3 +1,5 @@
+import { waitFor } from "./wait-for.js";
+
 export class Queue {
   constructor() {
     this.$writeQueue = new Array();
@@ -5,54 +7,39 @@ export class Queue {
     this.$capacity = 10;
   }
 
-  async waitFor({ predicate, error, noTimeout }) {
-    return new Promise((resolve, reject) => {
-      if (!noTimeout) {
-        setTimeout(() => reject(error ?? "Timeout"), 3 * 1000);
-      }
-
-      setInterval(() => {
-        if (predicate()) {
-          resolve(true);
-        }
-      }, 200);
-    });
-  }
-
   async write(msg) {
     if (
-      await this.waitFor({
+      await waitFor({
         predicate: () => this.$writeQueue.length < this.$capacity,
-        error: "Write timeout",
+        errorMsg: "Write timeout",
       })
     ) {
       this.$writeQueue.push(msg);
-      return Promise.resolve();
+      return "Success";
     }
-    return new Promise("Queue is full!!")();
+    return "Queue is full!!";
   }
 
   async read() {
-    //
-    // pop all elements from writeQueue and push them to readQueue
+    // wait for writeQueue to fill up if readQueue is empty
     if (
-      await this.waitFor({
+      this.$readQueue.length == 0 &&
+      (await waitFor({
         predicate: () => this.$writeQueue.length > 0,
-        error: "Read timeout",
-      })
+        errorMsg: "Shift timeout",
+      }))
     ) {
-      if (this.$readQueue.length == 0) {
-        while (this.$writeQueue.length > 0) {
-          this.$readQueue.push(this.$writeQueue.pop());
-        }
+      // pop all elements from writeQueue and push them to readQueue
+      while (this.$writeQueue.length > 0) {
+        this.$readQueue.push(this.$writeQueue.pop());
       }
     }
 
     // return last element from readQueue if non-empty
     if (
-      await this.waitFor({
+      await waitFor({
         predicate: () => this.$readQueue.length > 0,
-        error: "final reading",
+        errorMsg: "Read timeout",
       })
     ) {
       return this.$readQueue.pop();
