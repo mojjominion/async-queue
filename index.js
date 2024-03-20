@@ -1,44 +1,51 @@
 import { Queue } from "./queue.js";
 
-async function reader(q) {
+function sleep(ms = 2000) {
+  return new Promise((resolve) => setTimeout(() => resolve(true), ms));
+}
+/**
+ * @param {Queue} q - queue object
+ * @param {number} readerId - Reader id
+ */
+async function reader(q, readerId) {
   while (true) {
     try {
+      await sleep();
       const data = await q.read();
-      console.log(
-        "[Reader] Received ::",
-        data,
-        // q.$readQueue.length,
-        // q.$writeQueue.length,
-      );
+      console.log(`[Reader ${readerId}] Received ::`, data);
     } catch (error) {
-      console.log("[Reader Error] ::", error);
+      console.log(`[Reader Error ${readerId}] ::`, error);
     }
   }
 }
 
-async function writer(q) {
+/**
+ * @param {Queue} q - queue object
+ * @param {number} writerId - Reader id
+ */
+async function writer(q, writerId) {
   let i = 0;
-  while (true) {
+  while (i < 40) {
     try {
-      const msg = `msg_${i + 1}`;
+      // await sleep(4000);
+      const msg = `msg_${writerId}${++i}`;
       await q.write(msg);
-      i += 1;
-      console.log(
-        "[Writer] ::",
-        msg,
-        // q.$readQueue.length,
-        // q.$writeQueue.length,
-      );
+      console.log(`[Writer] ::`, msg);
     } catch (error) {
-      console.log("[Writer Error] ::", error);
+      console.log(`[Writer Error] ::`, error);
     }
   }
 }
 
 function run() {
   const queue = new Queue();
-  reader(queue);
-  writer(queue);
+  for (let i = 0; i < 20; i++) {
+    reader(queue, `${i + 1}`);
+  }
+
+  for (let i = 0; i < 2; i++) {
+    writer(queue, `${i + 1}`);
+  }
 }
 
 run();
